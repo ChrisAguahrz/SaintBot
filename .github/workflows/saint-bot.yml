@@ -1,0 +1,19 @@
+name: Saint Bot
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pywikibot requests
+      - name: Run saint bot
+        env:
+          WIKI_USERNAME: Gayle-Bot
+          WIKI_PASSWORD: CountryBot@it3ipj55bu65vg6vjq57i8dq4olhsrp2
+        run: python saint_bot.py
