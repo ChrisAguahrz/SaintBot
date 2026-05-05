@@ -1,18 +1,15 @@
-#!/#!/usr/bin/python
+#!/usr/bin/python
 import os, pywikibot, time, re
 
 DRY_RUN = False
 SUMMARY = "Bot: Panua orodha ya watakatifu katika sehemu ya 'Tazama pia'"
-
 OLD_TEXT = "* [[Orodha ya Watakatifu Wafransisko]]"
-
 SAINT_LINKS = [
     "Mabradha wa Shule za Kikristo", "Waaugustino", "Wabazili", "Wabenedikto",
     "Wadominiko", "Wafransisko", "Wajesuiti", "Wakarmeli", "Wakolumbani",
     "Wamersedari", "Waoratori", "Wapasionisti", "Wapremontree", "Waredentori",
     "Wasalesiani", "Waskolopi", "Wateatini", "Watrinitari", "Watumishi wa Maria", "Wavinsenti"
 ]
-
 READ_DELAY = 2
 EDIT_DELAY = 5
 
@@ -33,35 +30,23 @@ def build_new_links(exclude_saint=None):
 
 def process_page(page):
     text = page.text
-    
     if OLD_TEXT not in text:
         return False
-    
     page_saint = get_page_saint_category(page)
     new_links = build_new_links(page_saint)
-    
-    # Remove old single link
     new_text = text.replace(OLD_TEXT, "")
-    
-    # Remove any existing saint links (avoid duplicates)
     for saint in SAINT_LINKS:
         link = f"* [[Orodha ya Watakatifu {saint}]]"
         new_text = new_text.replace(link, "")
-    
-    # Clean extra blank lines
     new_text = re.sub(r'\n{3,}', '\n\n', new_text)
-    
-    # Replace in Tazama pia section
     if "== Tazama pia ==" in new_text:
         new_text = new_text.replace("== Tazama pia ==", "== Tazama pia ==\n" + new_links)
     elif "==Tazama pia==" in new_text:
         new_text = new_text.replace("==Tazama pia==", "==Tazama pia==\n" + new_links)
     else:
         new_text = new_text.rstrip() + "\n\n== Tazama pia ==\n" + new_links + "\n"
-    
     if new_text == text:
         return False
-    
     page.text = new_text
     page.save(summary=SUMMARY, minor=False)
     return True
@@ -74,19 +59,15 @@ def main():
     lm = ClientLoginManager(site=site, user=username)
     lm.password = password
     lm.login()
-    
     seen_pages = set()
     done = 0
-    total = 0
     
-    # ----- PHASE 1: Watakatifu Wakristo subcategories -----
-    print("=== PHASE 1: Watakatifu Wakristo subcategories ===")
+    print("=== PHASE 1 ===")
     main_cat = pywikibot.Category(site, "Watakatifu Wakristo")
     for subcat in main_cat.subcategories():
-        print(f"  Subcategory: {subcat.title()}")
+        print(f"  {subcat.title()}")
         time.sleep(READ_DELAY)
         for page in subcat.articles():
-            total += 1
             if page.title() in seen_pages:
                 continue
             seen_pages.add(page.title())
@@ -98,12 +79,10 @@ def main():
             except Exception as e:
                 print(f"    {page.title()}: error - {e}")
     
-    # ----- PHASE 2: Wakristo & Ukristo -----
-    print("=== PHASE 2: Wakristo & Ukristo ===")
+    print("=== PHASE 2 ===")
     for cat_name in ["Wakristo", "Ukristo"]:
         cat = pywikibot.Category(site, cat_name)
         for page in cat.articles(recurse=True):
-            total += 1
             if page.title() in seen_pages:
                 continue
             seen_pages.add(page.title())
@@ -115,12 +94,10 @@ def main():
             except Exception as e:
                 print(f"  {page.title()}: error - {e}")
     
-    # ----- PHASE 3: All Watakatifu categories -----
-    print("=== PHASE 3: All Watakatifu categories ===")
+    print("=== PHASE 3 ===")
     for cat_page in site.allcategories(prefix="Watakatifu"):
         cat = pywikibot.Category(site, cat_page.title())
         for page in cat.articles():
-            total += 1
             if page.title() in seen_pages:
                 continue
             seen_pages.add(page.title())
@@ -132,10 +109,8 @@ def main():
             except Exception as e:
                 print(f"  {page.title()}: error - {e}")
     
-    # ----- PHASE 4: All pages A-Z -----
-    print("=== PHASE 4: All pages A-Z ===")
+    print("=== PHASE 4 ===")
     for page in site.allpages(namespace=0):
-        total += 1
         if page.title() in seen_pages:
             continue
         seen_pages.add(page.title())
@@ -147,74 +122,7 @@ def main():
         except Exception as e:
             print(f"  {page.title()}: error - {e}")
     
-    print(f"\nFinished. Checked {total} pages, edited {done}.")
-
-if __name__ == "__main__":
-    main()
-    for saint in SAINT_LINKS:
-        link = f"* [[Orodha ya Watakatifu {saint}]]"
-        new_text = new_text.replace(link, "")
-    
-    # Clean up extra blank lines (more than 2 consecutive)
-    import re
-    new_text = re.sub(r'\n{3,}', '\n\n', new_text)
-    
-    # Find the "Tazama pia" section and add the new links
-    if "== Tazama pia ==" in new_text:
-        new_text = new_text.replace("== Tazama pia ==", "== Tazama pia ==\n" + new_links)
-    elif "==Tazama pia==" in new_text:
-        new_text = new_text.replace("==Tazama pia==", "==Tazama pia==\n" + new_links)
-    else:
-        # Add Tazama pia section at the end
-        new_text = new_text.rstrip() + "\n\n== Tazama pia ==\n" + new_links + "\n"
-    
-    if new_text == text:
-        return False
-    
-    page.text = new_text
-    page.save(summary=SUMMARY, minor=False)
-    return True
-
-def main():
-    username = os.getenv('WIKI_USERNAME', 'Gayle-Bot')
-    password = os.getenv('WIKI_PASSWORD', 'CountryBot@it3ipj55bu65vg6vjq57i8dq4olhsrp2')
-    site = pywikibot.Site("sw", "wikipedia")
-    from pywikibot.login import ClientLoginManager
-    lm = ClientLoginManager(site=site, user=username)
-    lm.password = password
-    lm.login()
-    
-    seen_pages = set()
-    done = 0
-    
-    # Phase 1: Watakatifu Wakristo category
-    print("Phase 1: Watakatifu Wakristo")
-    cat = pywikibot.Category(site, "Watakatifu Wakristo")
-    for page in cat.articles(recurse=True):
-        if page.title() not in seen_pages:
-            seen_pages.add(page.title())
-            try:
-                if process_page(page):
-                    done += 1
-                    print(f"{page.title()}: done")
-                    time.sleep(5)
-            except Exception as e:
-                print(f"{page.title()}: error - {e}")
-    
-    # Phase 2: All pages A-Z
-    print("Phase 2: All pages A-Z")
-    for page in site.allpages(namespace=0):
-        if page.title() not in seen_pages:
-            seen_pages.add(page.title())
-            try:
-                if process_page(page):
-                    done += 1
-                    print(f"{page.title()}: done")
-                    time.sleep(5)
-            except Exception as e:
-                print(f"{page.title()}: error - {e}")
-    
-    print(f"Finished. Checked {len(seen_pages)} pages, changed {done} pages.")
+    print(f"Done. Edited {done} pages.")
 
 if __name__ == "__main__":
     main()
