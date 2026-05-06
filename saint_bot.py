@@ -55,6 +55,9 @@ def main():
 
     # List of individual replacement links (without the * prefix for easier comparison)
     replacement_links = [
+        "[[Watakatifu wa Agano la Kale]]",
+        "[[Orodha ya Watakatifu Wakristo]]",
+        "[[Orodha ya Watakatifu wa Afrika]]",
         "[[Orodha ya Watakatifu Mabradha wa Shule za Kikristo]]",
         "[[Orodha ya Watakatifu Waaugustino]]",
         "[[Orodha ya Watakatifu Wabazili]]",
