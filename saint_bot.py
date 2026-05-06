@@ -73,7 +73,6 @@ def main():
     replacement_block = '\n'.join(f"* [[{link}]]" for link in replacement_links_clean)
 
     site = pywikibot.Site('sw', 'wikipedia')
-    site.login()
     
     updated = 0
     skipped = 0
