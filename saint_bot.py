@@ -1,22 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""
-Script to replace [[Orodha ya Watakatifu Wafransisko]] with a full list
-of Orodha ya Watakatifu links in the "Tazama pia" or "Tazama Pia" section
-of pages in specified categories.
-
-Parameters:
-    -dry:       Dry run - don't save changes
-    -always:    Don't prompt for confirmation
-"""
-
 import pywikibot
-from pywikibot import pagegenerators
 import re
-
+import sys
+import time
 
 def main():
-    # List of categories to process
     categories = [
         "Watakatifu wa Afrika Kusini", "Watakatifu wa Argentina", "Watakatifu wa Australia",
         "Watakatifu wa Afrika Kaskazini", "Watakatifu wa Albania", "Watakatifu wa Algeria",
@@ -53,220 +42,132 @@ def main():
         "Watakatifu wa Yordani", "Yurodivy"
     ]
 
-    # List of individual replacement links (without the * prefix for easier comparison)
-    replacement_links = [
-        "[[Watakatifu wa Agano la Kale]]",
-        "[[Orodha ya Watakatifu Wakristo]]",
-        "[[Orodha ya Watakatifu wa Afrika]]",
-        "[[Orodha ya Watakatifu Mabradha wa Shule za Kikristo]]",
-        "[[Orodha ya Watakatifu Waaugustino]]",
-        "[[Orodha ya Watakatifu Wabazili]]",
-        "[[Orodha ya Watakatifu Wabenedikto]]",
-        "[[Orodha ya Watakatifu Wadominiko]]",
-        "[[Orodha ya Watakatifu Wafransisko]]",
-        "[[Orodha ya Watakatifu Wajesuiti]]",
-        "[[Orodha ya Watakatifu Wakarmeli]]",
-        "[[Orodha ya Watakatifu Wakolumbani]]",
-        "[[Orodha ya Watakatifu Wamersedari]]",
-        "[[Orodha ya Watakatifu Waoratori]]",
-        "[[Orodha ya Watakatifu Wapasionisti]]",
-        "[[Orodha ya Watakatifu Wapremontree]]",
-        "[[Orodha ya Watakatifu Waredentori]]",
-        "[[Orodha ya Watakatifu Wasalesiani]]",
-        "[[Orodha ya Watakatifu Waskolopi]]",
-        "[[Orodha ya Watakatifu Wateatini]]",
-        "[[Orodha ya Watakatifu Watrinitari]]",
-        "[[Orodha ya Watakatifu Watumishi wa Maria]]",
-        "[[Orodha ya Watakatifu Wavinsenti]]"
+    # Replacement links stored clean (no brackets)
+    replacement_links_clean = [
+        "Watakatifu wa Agano la Kale",
+        "Orodha ya Watakatifu Wakristo",
+        "Orodha ya Watakatifu wa Afrika",
+        "Orodha ya Watakatifu Mabradha wa Shule za Kikristo",
+        "Orodha ya Watakatifu Waaugustino",
+        "Orodha ya Watakatifu Wabazili",
+        "Orodha ya Watakatifu Wabenedikto",
+        "Orodha ya Watakatifu Wadominiko",
+        "Orodha ya Watakatifu Wafransisko",
+        "Orodha ya Watakatifu Wajesuiti",
+        "Orodha ya Watakatifu Wakarmeli",
+        "Orodha ya Watakatifu Wakolumbani",
+        "Orodha ya Watakatifu Wamersedari",
+        "Orodha ya Watakatifu Waoratori",
+        "Orodha ya Watakatifu Wapasionisti",
+        "Orodha ya Watakatifu Wapremontree",
+        "Orodha ya Watakatifu Waredentori",
+        "Orodha ya Watakatifu Wasalesiani",
+        "Orodha ya Watakatifu Waskolopi",
+        "Orodha ya Watakatifu Wateatini",
+        "Orodha ya Watakatifu Watrinitari",
+        "Orodha ya Watakatifu Watumishi wa Maria",
+        "Orodha ya Watakatifu Wavinsenti"
     ]
 
-    # Build the full replacement text
-    replacement_list = '\n'.join(f'* {link}' for link in replacement_links)
+    # Build full replacement block
+    replacement_block = '\n'.join(f"* [[{link}]]" for link in replacement_links_clean)
 
-    # Pattern to find the target link (with optional * or # prefix)
-    target_pattern = r'(?:[\*\#]\s*)?\[\[Orodha ya Watakatifu Wafransisko\]\]'
-
-    # Get command line arguments
-    dry_run = False
-    always = False
-    local_args = pywikibot.handle_args()
-
-    for arg in local_args:
-        if arg == '-dry':
-            dry_run = True
-        elif arg == '-always':
-            always = True
-
-    # Variable for the site (default Swahili Wikipedia)
     site = pywikibot.Site('sw', 'wikipedia')
+    site.login()
     
-    # Statistics
-    total_pages = 0
-    updated_pages = 0
-    skipped_no_target = 0
-    skipped_no_section = 0
+    updated = 0
+    skipped = 0
     
-    # Process each category
+    start_time = time.time()
+    
     for cat_name in categories:
-        pywikibot.output(f"\n=== Processing category: {cat_name} ===")
+        sys.stdout.write(f"\n[{cat_name}]\n")
+        sys.stdout.flush()
         
         category = pywikibot.Category(site, cat_name)
-        
         if not category.exists():
-            pywikibot.warning(f"Category '{cat_name}' does not exist. Skipping...")
             continue
         
-        # Get all pages in the category
         pages = list(category.articles(namespaces=0))
-        pywikibot.output(f"Found {len(pages)} pages in category '{cat_name}'")
-        total_pages += len(pages)
         
         for page in pages:
-            try:
-                result = process_page(page, target_pattern, replacement_links, replacement_list, dry_run, always)
-                if result == 'updated':
-                    updated_pages += 1
-                elif result == 'no_target':
-                    skipped_no_target += 1
-                elif result == 'no_section':
-                    skipped_no_section += 1
-            except Exception as e:
-                pywikibot.error(f"Error processing page {page.title()}: {e}")
-    
-    # Print summary
-    pywikibot.output("\n=== SUMMARY ===")
-    pywikibot.output(f"Total pages processed: {total_pages}")
-    pywikibot.output(f"Pages updated: {updated_pages}")
-    pywikibot.output(f"Skipped (target not found): {skipped_no_target}")
-    pywikibot.output(f"Skipped (no Tazama pia section): {skipped_no_section}")
-
-
-def process_page(page, target_pattern, replacement_links, replacement_list, dry_run, always):
-    """Process a single page to find and replace the target text."""
-    
-    # Get the page text
-    text = page.text
-    
-    # Check if the page contains the target link
-    if not re.search(target_pattern, text):
-        pywikibot.output(f"  Skipping {page.title()} - target not found")
-        return 'no_target'
-    
-    # Check if the "Tazama pia" or "Tazama Pia" section exists and contains the target
-    # Pattern to match the section header and content
-    section_pattern = r'(==\s*[Tt]azama\s*[Pp]ia\s*==\s*\n)(.*?)(?=\n==|\Z)'
-    
-    match = re.search(section_pattern, text, re.DOTALL)
-    if not match:
-        pywikibot.output(f"  No 'Tazama pia' section found in {page.title()}")
-        return 'no_section'
-    
-    section_header = match.group(1)
-    section_content = match.group(2)
-    section_start = match.start()
-    section_end = match.end()
-    
-    # Check if the target is in the section content
-    if not re.search(target_pattern, section_content):
-        pywikibot.output(f"  Target not in 'Tazama pia' section of {page.title()}")
-        return 'no_target'
-    
-    # Extract existing links from the section (excluding the target link)
-    # Pattern to match wiki links in the section
-    existing_links_pattern = r'[\*\#]\s*(\[\[Orodha ya Watakatifu[^\]]+\]\])'
-    existing_links = set()
-    for link_match in re.finditer(existing_links_pattern, section_content):
-        existing_links.add(link_match.group(1))
-    
-    # Remove the target link from existing links if present
-    target_link = "[[Orodha ya Watakatifu Wafransisko]]"
-    existing_links.discard(target_link)
-    
-    # Determine which replacement links are already present
-    duplicates = set()
-    for replacement_link in replacement_links:
-        if replacement_link in existing_links:
-            duplicates.add(replacement_link)
-    
-    # Build new links list excluding duplicates
-    new_links = []
-    for link in replacement_links:
-        if link not in duplicates:
-            new_links.append(f"* {link}")
-        else:
-            pywikibot.output(f"  Avoiding duplicate: {link}")
-    
-    # Check if there are any non-duplicate links to add
-    if not new_links:
-        pywikibot.output(f"  All replacement links already exist in {page.title()}. Skipping...")
-        return 'no_target'
-    
-    # Build the new section content
-    new_replacement_list = '\n'.join(new_links)
-    
-    # Replace the old target line with the new list
-    new_section_content = re.sub(target_pattern, new_replacement_list, section_content)
-    
-    # Also remove any other duplicate lines that might exist from the replacement links
-    # This handles cases where some links from the replacement list already existed elsewhere
-    lines = new_section_content.split('\n')
-    seen_links = set()
-    cleaned_lines = []
-    
-    for line in lines:
-        # Extract link if present
-        link_match = re.match(r'\s*[\*\#]\s*(\[\[Orodha ya Watakatifu[^\]]+\]\])', line)
-        if link_match:
-            link = link_match.group(1)
-            if link not in seen_links:
-                seen_links.add(link)
-                cleaned_lines.append(line)
-            else:
-                pywikibot.output(f"  Removing duplicate line: {line.strip()}")
-                # Skip this duplicate line
+            text = page.text
+            
+            # Must have target
+            if "[[Orodha ya Watakatifu Wafransisko]]" not in text:
+                skipped += 1
                 continue
-        else:
-            cleaned_lines.append(line)
+            
+            # Find Tazama pia section
+            section_match = re.search(r'(==\s*[Tt]azama\s*[Pp]ia\s*==\s*\n)(.*?)(?=\n==|\Z)', text, re.DOTALL)
+            if not section_match:
+                skipped += 1
+                continue
+            
+            section_header = section_match.group(1)
+            section_content = section_match.group(2)
+            section_start = section_match.start()
+            section_end = section_match.end()
+            
+            # Target must be IN this section
+            if "[[Orodha ya Watakatifu Wafransisko]]" not in section_content:
+                skipped += 1
+                continue
+            
+            # === BUILD NEW SECTION ===
+            lines = section_content.split('\n')
+            new_lines = []
+            seen_links = set()  # track links we've already added
+            
+            for line in lines:
+                # Is this the target line? Replace with full block
+                if '[[Orodha ya Watakatifu Wafransisko]]' in line:
+                    for link in replacement_links_clean:
+                        link_formatted = f"* [[{link}]]"
+                        if link not in seen_links:
+                            new_lines.append(link_formatted)
+                            seen_links.add(link)
+                    continue
+                
+                # Is this a Watakatifu list item?
+                link_match = re.match(r'(\s*[\*\#]\s*)\[\[([^\]]+)\]\]', line)
+                if link_match and 'Watakatifu' in link_match.group(2):
+                    link_text = link_match.group(2)
+                    prefix = link_match.group(1)
+                    
+                    # If this link is in our replacement list, it's a duplicate - skip it
+                    if link_text in replacement_links_clean:
+                        continue
+                    
+                    # If we've seen this link before, skip it (duplicate)
+                    if link_text in seen_links:
+                        continue
+                    
+                    seen_links.add(link_text)
+                    new_lines.append(line)
+                else:
+                    new_lines.append(line)
+            
+            new_section = '\n'.join(new_lines)
+            new_text = text[:section_start] + section_header + new_section + text[section_end:]
+            
+            if new_text == text:
+                skipped += 1
+                continue
+            
+            page.text = new_text
+            try:
+                page.save(summary="Imesasishwa: [[Orodha ya Watakatifu Wafransisko]] -> Orodha za watakatifu kwa shirika")
+                updated += 1
+                sys.stdout.write(f"  OK: {page.title()}\n")
+            except Exception as e:
+                sys.stdout.write(f"  FAIL: {page.title()} - {e}\n")
+            
+            sys.stdout.flush()
     
-    new_section_content = '\n'.join(cleaned_lines)
-    
-    # Reconstruct the page text
-    new_text = text[:section_start] + section_header + new_section_content + text[section_end:]
-    
-    # Show diff
-    pywikibot.showDiff(text, new_text)
-    
-    if dry_run:
-        pywikibot.output(f"  [DRY RUN] Would update {page.title()}")
-        return 'updated'
-    
-    # Ask for confirmation unless -always is specified
-    confirm = always
-    if not always:
-        choice = pywikibot.input_choice(
-            f"Update {page.title()}?",
-            [('Yes', 'y'), ('No', 'n'), ('Always', 'a')],
-            default='n'
-        )
-        if choice == 'n':
-            return 'no_target'
-        elif choice == 'a':
-            confirm = True
-    
-    if confirm or always:
-        # Save the page
-        page.text = new_text
-        summary = "[[Orodha ya Watakatifu Wafransisko]] → Orodha za watakatifu kwa shirika (duplicates removed)"
-        
-        try:
-            page.save(summary=summary)
-            pywikibot.output(f"  ✓ Updated {page.title()}")
-            return 'updated'
-        except Exception as e:
-            pywikibot.error(f"  ✗ Failed to save {page.title()}: {e}")
-            return 'no_target'
-    
-    return 'no_target'
+    elapsed = time.time() - start_time
+    sys.stdout.write(f"\nDONE in {elapsed:.0f}s | Updated: {updated} | Skipped: {skipped}\n")
+    sys.stdout.flush()
 
 
 if __name__ == '__main__':
